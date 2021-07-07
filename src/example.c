@@ -1,59 +1,32 @@
 #include "libuvc/libuvc.h"
 #include <stdio.h>
-
+#include <unistd.h>
 /* This callback function runs once per frame. Use it to perform any
  * quick processing you need, or have it put the frame into your application's
  * input queue. If this function takes too long, you'll start losing frames. */
 void cb(uvc_frame_t *frame, void *ptr) {
-  uvc_frame_t *bgr;
   uvc_error_t ret;
 
-  /* We'll convert the image from YUV/JPEG to BGR, so allocate space */
-  bgr = uvc_allocate_frame(frame->width * frame->height * 3);
-  if (!bgr) {
-    printf("unable to allocate bgr frame!");
-    return;
+  enum uvc_frame_format *frame_format = (enum uvc_frame_format *)ptr;
+  FILE *fp;
+  static const char *H264_FILE = "out.h264";
+  char filename[16]; 
+
+
+  printf("callback! frame_format = %d, width = %d, height = %d, length = %lu, ptr = %d\n",
+    frame->frame_format, frame->width, frame->height, frame->data_bytes, (int) ptr);
+
+  switch (frame->frame_format) {
+  case UVC_FRAME_FORMAT_H264:
+     fp = fopen(H264_FILE, "a");
+     fwrite(frame->data, 1, frame->data_bytes, fp);
+     fclose(fp); 
+  default:
+    printf("other format \n");
+    break;
   }
-
-  /* Do the BGR conversion */
-  ret = uvc_any2bgr(frame, bgr);
-  if (ret) {
-    uvc_perror(ret, "uvc_any2bgr");
-    uvc_free_frame(bgr);
-    return;
-  }
-
-  /* Call a user function:
-   *
-   * my_type *my_obj = (*my_type) ptr;
-   * my_user_function(ptr, bgr);
-   * my_other_function(ptr, bgr->data, bgr->width, bgr->height);
-   */
-
-  /* Call a C++ method:
-   *
-   * my_type *my_obj = (*my_type) ptr;
-   * my_obj->my_func(bgr);
-   */
-
-  /* Use opencv.highgui to display the image:
-   * 
-   * cvImg = cvCreateImageHeader(
-   *     cvSize(bgr->width, bgr->height),
-   *     IPL_DEPTH_8U,
-   *     3);
-   *
-   * cvSetData(cvImg, bgr->data, bgr->width * 3); 
-   *
-   * cvNamedWindow("Test", CV_WINDOW_AUTOSIZE);
-   * cvShowImage("Test", cvImg);
-   * cvWaitKey(10);
-   *
-   * cvReleaseImageHeader(&cvImg);
-   */
-
-  uvc_free_frame(bgr);
 }
+
 
 int main(int argc, char **argv) {
   uvc_context_t *ctx;
@@ -73,6 +46,11 @@ int main(int argc, char **argv) {
   }
 
   puts("UVC initialized");
+
+  /* zero the h264 file if it already exsits*/
+  FILE *fp;
+  fp = fopen("out.h264", "w");
+  fclose(fp);
 
   /* Locates the first attached UVC device, stores in dev */
   res = uvc_find_device(
@@ -96,11 +74,10 @@ int main(int argc, char **argv) {
        * knows about the device */
       uvc_print_diag(devh, stderr);
 
-      /* Try to negotiate a 640x480 30 fps YUYV stream profile */
       res = uvc_get_stream_ctrl_format_size(
           devh, &ctrl, /* result stored in ctrl */
-          UVC_FRAME_FORMAT_YUYV, /* YUV 422, aka YUV 4:2:2. try _COMPRESSED */
-          640, 480, 30 /* width, height, fps */
+          UVC_FRAME_FORMAT_H264, /* THE ACTUAL PAYLOAD CAN BE ANYTHING, H264,H265, INTERLEVED PAYLOADS! */
+          1088, 1080, 30 /* width, height, fps */
       );
 
       /* Print out the result */
@@ -112,7 +89,7 @@ int main(int argc, char **argv) {
         /* Start the video stream. The library will call user function cb:
          *   cb(frame, (void*) 12345)
          */
-        res = uvc_start_streaming(devh, &ctrl, cb, 12345, 0);
+        res = uvc_start_streaming(devh, &ctrl, cb, (void *) 12345, 0);
 
         if (res < 0) {
           uvc_perror(res, "start_streaming"); /* unable to start stream */
@@ -145,4 +122,3 @@ int main(int argc, char **argv) {
 
   return 0;
 }
-

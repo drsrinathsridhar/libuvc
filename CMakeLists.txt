@@ -20,6 +20,8 @@ set(libuvc_VERSION ${libuvc_VERSION_MAJOR}.${libuvc_VERSION_MINOR}.${libuvc_VERS
 set(libuvc_DESCRIPTION "A cross-platform library for USB video devices")
 set(libuvc_URL "https://github.com/ktossell/libuvc")
 
+option(BUILD_EXAMPLE "Build example program" ON)
+
 if(WIN32)
 
   find_library(LIBUSB_LIBRARIES usb-1.0
@@ -133,3 +135,14 @@ install(FILES
   "${PROJECT_BINARY_DIR}/libuvc.pc"
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
 )
+
+if(BUILD_EXAMPLE)
+  add_executable(example src/example.c)
+  find_package(Threads)
+  target_link_libraries(example
+    PRIVATE
+      uvc
+      Threads::Threads
+  )
+endif()
+

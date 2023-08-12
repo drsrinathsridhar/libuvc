@@ -1388,7 +1388,7 @@ void uvc_stop_streaming(uvc_device_handle_t *devh) {
  * @param devh UVC device
  */
 uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
-  int i,timeout_us= 1000000,ret=UVC_SUCCESS;
+  int i,timeout_us= 1,ret=UVC_SUCCESS;
   time_t add_secs;
   time_t add_nsecs;
   struct timespec ts;

@@ -800,40 +800,6 @@ void LIBUSB_CALL _uvc_stream_callback(struct libusb_transfer *transfer) {
     }
     pthread_mutex_unlock(&strmh->cb_mutex);
   }
-
-	if ( strmh->running && resubmit ) {
-	    libusb_submit_transfer(transfer);
-	}  else {
-	    _uvc_delete_transfer(transfer);
-	}
-}
-
-/** 
-See this issue: https://github.com/libuvc/libuvc/issues/16
-*/
-
-static void _uvc_delete_transfer(struct libusb_transfer *transfer) {
-    uvc_stream_handle_t *strmh = transfer->user_data;
-    if (!strmh) return;
-    int i;
-    pthread_mutex_lock(&strmh->cb_mutex);
-    {
-        for (i = 0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
-            if (strmh->transfers[i] == transfer) {
-                libusb_cancel_transfer(strmh->transfers[i]);
-                UVC_DEBUG("Freeing transfer %d (%p)", i, transfer);
-                free(transfer->buffer);
-                libusb_free_transfer(transfer);
-                strmh->transfers[i] = NULL;
-                break;
-            }
-        }
-        if (i == LIBUVC_NUM_TRANSFER_BUFS) {
-            UVC_DEBUG("transfer %p not found; not freeing!", transfer);
-        }
-        pthread_cond_broadcast(&strmh->cb_cond);
-    }
-    pthread_mutex_unlock(&strmh->cb_mutex);
 }
 
 /** Begin streaming video from the camera into the callback function.
@@ -1408,9 +1374,9 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
       int res = libusb_cancel_transfer(strmh->transfers[i]);
       if(res < 0 && res == LIBUSB_ERROR_NOT_FOUND ) {
 	UVC_DEBUG("[stream_stop] Freeing transfer %d (%p)", i, strmh->transfers[i]);
-        // free(strmh->transfers[i]->buffer);
-        // libusb_free_transfer(strmh->transfers[i]);
-        // strmh->transfers[i] = NULL;
+        free(strmh->transfers[i]->buffer);
+        libusb_free_transfer(strmh->transfers[i]);
+        strmh->transfers[i] = NULL;
 	strmh->flying_xfers--;
       } else {
 	UVC_DEBUG("cancel_res = %d\n", res);

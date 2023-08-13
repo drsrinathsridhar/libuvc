@@ -14,8 +14,6 @@ extern "C" {
 #endif
 #include <libuvc/libuvc_config.h>
 
-#include <errno.h>
-
 struct libusb_context;
 struct libusb_device_handle;
 

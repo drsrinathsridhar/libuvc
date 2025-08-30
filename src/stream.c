@@ -1060,7 +1060,7 @@ uvc_error_t uvc_stream_start(
 
 
     // our way: estimate it:
-	if (strmh->frame_format==UVC_FRAME_FORMAT_MJPEG) {
+	if (strmh->frame_format==UVC_FRAME_FORMAT_MJPEG || strmh->frame_format==UVC_FRAME_FORMAT_H264) {
 		size_t bandwidth = frame_desc->wWidth * frame_desc->wHeight / 8 * bandwidth_factor; //the last one is bpp default 4 but we use if for compression, 2 is save, 1.5 is needed to run 3 high speed cameras. on one bus.
 		bandwidth *= 10000000 / strmh->cur_ctrl.dwFrameInterval + 1;
 		bandwidth /= 1000; //unit
